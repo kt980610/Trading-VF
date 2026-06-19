@@ -1,0 +1,108 @@
+symbols:
+  - BTCUSDT
+  - ETHUSDT
+  - SOLUSDT
+  - ADAUSDT
+  - XRPUSDT
+  - BNBUSDT
+  # Optional: supported only if data exists, otherwise skipped automatically.
+  - NEOUSDT
+  - LINKUSDT
+
+data:
+  raw_dir: data/raw
+  output_path: data/distribution_snapshot.json
+  timeframe: 1m
+  daily_resample: true
+
+rolling:
+  window_days: 30
+  variance_mode: population
+
+distribution:
+  method: histogram
+  bins: 400
+  min_observations: 60
+
+integration:
+  grid_points: 0      # 0 -> reuse the snapshot return-distribution grid
+  clip_to_grid: true
+
+rf_model:
+  scope: per_symbol
+  fallback_to_baseline_if_symbol_model_missing: true
+  min_training_rows: 250
+  n_estimators: 200
+  max_depth: 0        # 0 -> no limit
+  random_state: 42
+  decision_threshold: 0.0
+  train_frequency: monthly
+  history_years: 4
+  include_optional_component_features: false
+
+volume:
+  enabled: true
+  kernel: rbf
+  alpha: 1.0
+  gamma: 0.0          # 0 -> sklearn default
+  min_train_days: 120
+  walk_forward: true
+
+news:
+  enabled: true
+  raw_path: data/raw/news.jsonl
+  output_path: data/news_features_daily.jsonl
+  categories:
+    - macro
+    - policy
+    - stock_market
+    - crypto_market
+    - symbol_specific
+  sentiment_backend: lexicon   # lexicon | table | finbert | vader
+  sentiment_table_path: ""
+
+correlation:
+  enabled: true
+  lookback_days: 90
+  min_required_days: 60
+  method: pearson
+  fallback_self_corr: 1.0
+  fallback_cross_corr: 0.0
+  output_path: data/correlation_matrix_daily.jsonl
+
+feature_scaling:
+  enabled: true
+  scope: per_symbol
+  scaler: robust        # robust | standard
+  imputer: median
+  fit_on_train_only: true
+
+mdp:
+  add_margin_step: 10.0
+  max_add_margin_per_decision: 1.0e18
+  max_total_added_margin: 1.0e18
+
+simulation:
+  fee_rate: 0.0004
+  funding_rate: 0.0
+  slippage: 0.0
+  decision_threshold: 0.0
+  use_rf: true
+  parallel: true
+  max_workers: 0      # 0 -> auto
+
+paths:
+  distribution_snapshot: data/distribution_snapshot.json
+  integral_cache: data/integral_cache.json
+  predicted_daily_volume: data/predicted_daily_volume.jsonl
+  news_features_daily: data/news_features_daily.jsonl
+  correlation_matrix_daily: data/correlation_matrix_daily.jsonl
+  rf_dataset_dir: data
+  simulation_results: data/simulation_results.csv
+  volume_report: reports/volume_model_report.csv
+  rf_policy_report: reports/rf_policy_report.csv
+  speed_benchmark: reports/speed_benchmark.csv
+  models_promoted: models/promoted
+  models_staging: models/staging
+  models_archive: models/archive
+  volume_models: models/volume

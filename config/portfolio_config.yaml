@@ -1,0 +1,40 @@
+portfolio:
+  enabled: true
+  update_frequency: daily
+  update_time_utc: "00:10"
+  lookback_days: 30
+  min_required_days: 25
+  base_capital_per_symbol: 1000
+  risk_aversion: 2.0
+  allow_cash: true
+  max_weight_per_symbol: 0.40
+  covariance_mode: sample        # sample | population
+  covariance_epsilon: 1.0e-6
+  long_short_split: equal
+  integer_tolerance: 1.0e-9
+  default_weight_step: 0.01
+  symbols:
+    - BTCUSDT
+    - ETHUSDT
+    - SOLUSDT
+    - ADAUSDT
+    - XRPUSDT
+    - BNBUSDT
+  weight_steps:
+    BTCUSDT: 0.01
+    ETHUSDT: 0.01
+    SOLUSDT: 0.01
+    ADAUSDT: 0.005
+    XRPUSDT: 0.005
+    BNBUSDT: 0.005
+
+branch_and_bound:
+  enabled: true
+  max_nodes: 50000
+  max_runtime_ms: 5000
+  objective_tolerance: 1.0e-9
+
+paths:
+  simulated_returns: data/simulation_results.csv
+  realized_returns: data/realized_symbol_returns.jsonl
+  output_path: data/portfolio_weights.json
