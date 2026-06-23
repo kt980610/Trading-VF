@@ -1,0 +1,34 @@
+[Unit]
+Description=Trading VF live news worker (DISABLED: no approved provider; GDELT DOC demoted to debug-only)
+Documentation=https://github.com/
+# Run after the network is up so the provider fetch can reach the API.
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+# Adjust WorkingDirectory and User to the deployment.
+WorkingDirectory=/opt/trading-vf
+User=trading
+
+# The (optional) EnvironmentFile only matters for the smoke-test-only NewsAPI
+# adapter; if a key is ever used it is read ONLY from the environment, NEVER from
+# config, logs, artifacts or git. A missing file is tolerated.
+EnvironmentFile=-/etc/trading-vf/news.env
+
+# NEWS WORKER IS INTENTIONALLY DISABLED (fail-closed).
+# GDELT DOC 2.0 is rate-limited (~1 req / 5s, HTTP 429) and recent/live only, so
+# it is NOT a production or historical-training source and the worker must NOT
+# call it. The config runs the verified no-news baseline (news.enabled=false).
+# There are deliberately NO fetch/score/build ExecStart lines here. The single
+# ExecStart below exits NON-ZERO on purpose so the unit reports `failed` rather
+# than masquerading as a successful run that did real ingestion. Re-enable real
+# steps ONLY after a dedicated historical+live GKG provider lands (see the
+# feasibility report); do NOT re-enable the DOC adapter.
+ExecStart=/usr/bin/false
+
+Nice=10
+TimeoutStartSec=600
+
+[Install]
+WantedBy=multi-user.target

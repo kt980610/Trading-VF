@@ -1,0 +1,63 @@
+live:
+  shadow_mode: true
+  real_money: false
+  require_rf_for_new_trade: true
+  fallback_to_baseline_if_rf_missing: true
+
+risk:
+  min_total_wallet_balance_usdt: 100.0
+  kill_switch_close_positions: true
+  kill_switch_cancel_orders: true
+  kill_switch_stop_trading: true
+
+trade_opening:
+  mode: day_start_only
+  open_time_utc: "00:00"
+
+mdp:
+  add_margin_step: 10.0
+  max_add_margin_per_decision: 500.0
+  max_total_added_margin: 2000.0
+
+live_parallel:
+  enabled: true
+  max_symbol_workers: 8
+  decision_timeout_ms: 5000
+  order_executor_mode: single_queue
+  order_rate_limit_enabled: true
+  max_orders_per_second: 2
+  cancel_before_close: true
+
+# Canonical MVO portfolio-weight sizing. Live size is always
+# total_equity (wallet_balance + unrealized_pnl) * mvo_weight; there is no fixed
+# deploy capital or net-PnL adjustment.
+sizing:
+  max_order_notional_usdt: 0.0   # 0 => no per-order notional cap
+  max_portfolio_age_days: 2      # stale MVO artifact blocks new opens
+  weight_sum_tolerance: 1.0e-6   # sum(weights) + cash_weight == 1.0
+  portfolio_version: ""          # empty => accept any; set to pin a version
+
+exchange:
+  base_url: "https://fapi.binance.com"
+  default_leverage: 1.0
+  leverage:
+    BTCUSDT: 5.0
+    ETHUSDT: 5.0
+
+symbols:
+  - BTCUSDT
+  - ETHUSDT
+
+paths:
+  distribution_snapshot: "data/distribution_snapshot.json"
+  integral_cache: "data/integral_cache.json"
+  portfolio_weights: "data/portfolio_weights.json"
+  predicted_daily_volume: "data/predicted_daily_volume.jsonl"
+  news_features_daily: "data/news_features_daily.jsonl"
+  correlation_matrix_daily: "data/correlation_matrix_daily.jsonl"
+  models_promoted: "models/promoted"
+  live_position_state: "data/live_position_state.json"
+  live_decisions: "data/live_decisions.jsonl"
+  realized_symbol_returns: "data/realized_symbol_returns.jsonl"
+  kill_switch_triggered: "data/kill_switch_triggered.json"
+  live_performance: "data/live_performance.jsonl"

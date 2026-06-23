@@ -1,0 +1,19 @@
+{
+  "total_equity": 12500.0,
+  "expected": [
+    {
+      "symbol": "BTCUSDT",
+      "weight": 0.35,
+      "leverage": 5.0,
+      "target_margin": 4375.0,
+      "target_notional": 21875.0
+    },
+    {
+      "symbol": "ETHUSDT",
+      "weight": 0.25,
+      "leverage": 3.0,
+      "target_margin": 3125.0,
+      "target_notional": 9375.0
+    }
+  ]
+}

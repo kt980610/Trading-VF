@@ -1,0 +1,18 @@
+[Unit]
+Description=Trigger for Trading VF news worker (DISABLED: worker is fail-closed; do not enable)
+# NOTE: the worker unit is intentionally DISABLED and fail-closed (it exits
+# non-zero, never doing real ingestion) until a dedicated historical+live GKG
+# provider lands. It does NOT call the rate-limited GDELT DOC adapter. Leave this
+# timer disabled by default (do NOT `systemctl enable`) until news is re-approved.
+
+[Timer]
+# First run shortly after boot, then every 15 minutes (wall-clock aligned).
+OnBootSec=2min
+OnCalendar=*:0/15
+# Catch up on a single missed run after downtime.
+Persistent=true
+AccuracySec=30s
+Unit=trading-vf-news.service
+
+[Install]
+WantedBy=timers.target

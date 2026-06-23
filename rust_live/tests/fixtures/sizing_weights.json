@@ -1,0 +1,48 @@
+{
+  "as_of_date": "2026-06-20",
+  "lookback_days": 30,
+  "input_type": "hybrid_realized_over_simulated",
+  "objective": "mu^T w - risk_aversion * w^T Sigma w",
+  "long_short_split": "equal",
+  "risk_aversion": 2.0,
+  "symbols": {
+    "BTCUSDT": {
+      "valid": true,
+      "mu": 0.002,
+      "variance": 0.01,
+      "weight_continuous": 0.35,
+      "weight_step": 0.01,
+      "k": 35,
+      "weight_discrete": 0.35,
+      "long_weight": 0.175,
+      "short_weight": 0.175,
+      "integer_constraint_ok": false,
+      "weight_times_2_over_step": 70.0
+    },
+    "ETHUSDT": {
+      "valid": true,
+      "mu": 0.0015,
+      "variance": 0.02,
+      "weight_continuous": 0.25,
+      "weight_step": 0.01,
+      "k": 25,
+      "weight_discrete": 0.25,
+      "long_weight": 0.125,
+      "short_weight": 0.125,
+      "integer_constraint_ok": false,
+      "weight_times_2_over_step": 50.0
+    }
+  },
+  "sum_weight_discrete": 0.6,
+  "cash_weight": 0.4,
+  "weights": {
+    "BTCUSDT": 0.35,
+    "ETHUSDT": 0.25
+  },
+  "selected_symbols": [
+    "BTCUSDT",
+    "ETHUSDT"
+  ],
+  "weight_semantics": "margin_fraction_of_total_equity",
+  "portfolio_version": "mvo_bnb_v1"
+}

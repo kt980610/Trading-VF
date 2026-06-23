@@ -1,0 +1,221 @@
+symbols:
+  - BTCUSDT
+  - ETHUSDT
+  - SOLUSDT
+  - ADAUSDT
+  - XRPUSDT
+  - BNBUSDT
+  # Optional: supported only if data exists, otherwise skipped automatically.
+  - NEOUSDT
+  - LINKUSDT
+
+data:
+  raw_dir: data/raw
+  output_path: data/distribution_snapshot.json
+  # Two explicit raw sources. The file suffix (NOT `timeframe`) selects the file.
+  daily_file_suffix: "_daily.csv"
+  minute_file_suffix: "_1m.csv"
+  require_daily_source: true
+  require_minute_source: true
+  # Deprecated: kept for compatibility only, ignored for source selection.
+  timeframe: 1m
+  daily_resample: true
+
+rolling:
+  window_days: 30
+  variance_mode: population
+
+distribution:
+  method: histogram
+  bins: 400
+  min_observations: 60
+
+integration:
+  grid_points: 0      # 0 -> reuse the snapshot return-distribution grid
+  clip_to_grid: true
+
+rf_model:
+  scope: per_symbol
+  fallback_to_baseline_if_symbol_model_missing: true
+  min_training_rows: 250
+  n_estimators: 200
+  max_depth: 0        # 0 -> no limit
+  random_state: 42
+  # Parallel tree workers. -1 = all cores but multiplies peak RAM (each worker
+  # holds tree state); 4 bounds memory for the large daily/windowed datasets.
+  n_jobs: 4
+  decision_threshold: 0.0
+  train_frequency: monthly
+  history_years: 4
+  include_optional_component_features: false
+
+volume:
+  enabled: true
+  kernel: rbf
+  alpha: 1.0
+  gamma: 0.0          # 0 -> sklearn default
+  min_train_days: 120
+  walk_forward: true
+
+news:
+  # ENABLED via the GKG daily provider (market-wide, D-1 leakage-safe).
+  #  * Source: scripts/gkg_historical_feature_backfill.py -> SQLite slot features
+  #    (see gkg_features_db); src.gkg_news_daily rolls it up into the daily
+  #    news_features_daily.jsonl artifact consumed by BOTH RF training and the
+  #    Rust live engine. All emitted columns use the gkg_ prefix.
+  #  * D-1 design: each daily row is keyed by the day news OCCURRED; consumers
+  #    apply the previous-completed-day join (training via build_previous_day_
+  #    provider, live via NewsFeatures::previous_day_features). A minute on day D
+  #    uses day D-1's news; no same-day look-ahead.
+  #  * intraday_news_enabled stays false: this is a DAILY (not as-of) design.
+  #  * GDELT DOC 2.0 / NewsAPI remain debug/smoke-test only and are NOT used here.
+  enabled: true
+  # strict_coverage gates the legacy article pipeline (main_build_news), which is
+  # NOT used by the GKG daily path. Kept false so the GKG path is self-contained.
+  strict_coverage: false
+  # 'gdelt' here selects the optional/debug DOC adapter. It stays for manual --probe
+  # diagnostics only; it is NOT used while enabled=false and is not production-ready.
+  provider: gdelt
+  # API key is read ONLY from this environment variable (NewsAPI smoke-tests
+  # only). GDELT needs no key. NEVER put any key here.
+  api_key_env: NEWSAPI_API_KEY
+  # GDELT DOC 2.0 API. Empty base_url -> built-in default endpoint.
+  gdelt_base_url: ""
+  gdelt_max_records: 250
+  # Minimum seconds between ANY two GDELT requests (single global limiter; no
+  # per-query bursts). GDELT throttles hard -> keep this conservative.
+  gdelt_min_request_interval_seconds: 5.0
+  # OUR safety policy (NOT an official GDELT limit): treat DOC 2.0 as recent/live
+  # only and fail fast (unsupported_history_window) for older dates. Use a
+  # dedicated historical provider (GKG/bulk or BigQuery) for 2022-2026 backfill.
+  gdelt_doc_max_lookback_days: 90
+  raw_path: data/raw/news.jsonl
+  coverage_manifest_path: data/news_coverage_manifest.jsonl
+  output_path: data/news_features_daily.jsonl
+  report_path: reports/news_ingestion_report.json
+  sentiment_cache_path: data/news_sentiment_cache.jsonl
+  sentiment_backend: finbert   # lexicon | table | finbert | vader
+  sentiment_table_path: ""
+  backfill_start: 2022-01-01
+  language: en
+  categories:
+    - macro
+    - policy
+    - stock_market
+    - crypto_market
+    - symbol_specific
+  # --- Live / intraday as-of news features (RF inference, no retraining) ---
+  # true => live inference AND training both use the as-of symbol+timestamp join.
+  intraday_news_enabled: false
+  feature_lookback_hours: 24
+  news_safety_lag_seconds: 300
+  historical_news_availability_lag_seconds: 300
+  max_news_feature_age_minutes: 30
+  intraday_output_path: data/news_features_intraday.jsonl
+  feature_version: news_v1
+  # GKG slot-feature SQLite backfill (input to src.gkg_news_daily). Build it with
+  # scripts/gkg_historical_feature_backfill.py (2-hourly: --slot-stride 8).
+  gkg_features_db: data/gkg_4y_2h.sqlite
+
+correlation:
+  enabled: true
+  lookback_days: 90
+  min_required_days: 60
+  method: pearson
+  fallback_self_corr: 1.0
+  fallback_cross_corr: 0.0
+  output_path: data/correlation_matrix_daily.jsonl
+
+feature_scaling:
+  enabled: true
+  scope: per_symbol
+  scaler: robust        # robust | standard
+  imputer: median
+  fit_on_train_only: true
+
+halving:
+  enabled: true
+  season_seed: 0
+  # UTC halving timestamps; empty -> built-in defaults (2012..2028 anchors).
+  dates: []
+
+beta:
+  # CAPM rolling beta per symbol per day (D-1 leakage-safe), added as an RF
+  # feature. Market leg = cap-weighted market index built from LOCAL daily closes
+  # (scripts/build_market_index.py: sum of close x current circulating supply) so
+  # it covers 2018/2022 history that CoinGecko's free tier (last 365d) cannot.
+  # asset leg = symbol daily close.
+  # beta = Cov(R_coin_L, R_mkt_L) / Var(R_mkt_L) over the last `window_days` of
+  # `return_lag_days`-day returns. Needs ~(window_days + return_lag_days) days of
+  # daily lead-in before each training window (120d for 90+30).
+  enabled: true
+  market_cap_path: data/market_cap_daily.csv
+  output_path: data/capm_beta_daily.jsonl
+  return_lag_days: 30
+  window_days: 90
+  market_top_n: 30
+
+training:
+  # Disjoint UTC date windows the RF trains on (end EXCLUSIVE). Empty -> use the
+  # full minute history. Format: "START/END" (dates, YYYY-MM-DD). Each window is
+  # generated and split (train/val/test) INDEPENDENTLY so every halving regime
+  # appears in all splits. The per-timestamp halving_cycle_id (the "k" class) is
+  # 2 for the 2018 window, 3 for 2022, 4 for 2026 (all pre-halving phases).
+  #
+  # WARMUP DATA: trades are only generated INSIDE these windows, but the daily
+  # OHLCV (distribution PDFs: MA, MA-of-MA, variance, var-of-MA) and the GKG news
+  # need ~60 days of lead-in BEFORE each window start to be fully warm. So the
+  # underlying data sources must cover [start - 60d, end] even though no trade is
+  # emitted in the lead-in. Lead-in starts: 2018-06-02 / 2022-04-02 / 2026-02-20.
+  windows:
+    - "2018-08-01/2018-11-01"   # k = halving_cycle_id 2 (pre-2020-halving)
+    - "2022-06-01/2022-09-01"   # k = halving_cycle_id 3 (pre-2024-halving)
+    - "2026-04-21/2026-06-21"   # k = halving_cycle_id 4 (pre-2028-halving)
+  # Open one overlapping episode every N days inside each window (1=daily,
+  # 7=weekly). Daily is the target on the dedicated high-RAM training server;
+  # each episode runs to true liquidation/full-close (no holding cap).
+  entry_every_days: 1
+  # Optional hard cap on episode hold length in days (0 = disabled). Left off so
+  # the "hold to liquidation/close" principle is preserved.
+  max_hold_days: 0
+  # OOM fix: stream generated rows to compact float32 Parquet parts on disk
+  # during generation instead of holding millions of fat dicts in RAM. The full
+  # matrix is reassembled (compactly) only for fit. Lower spill_flush_rows =>
+  # lower peak generation RAM (but more, smaller part files).
+  spill_to_disk: true
+  spill_flush_rows: 250000
+  # Cap rows used to FIT the RF (0 = all). Full dataset stays on disk; fit trains
+  # on a representative subsample so sklearn does not OOM on the huge daily
+  # multi-window matrix. Raise this on a high-RAM training server.
+  train_max_rows: 3000000
+
+mdp:
+  add_margin_step: 10.0
+  max_add_margin_per_decision: 1.0e18
+  max_total_added_margin: 1.0e18
+
+simulation:
+  fee_rate: 0.0004
+  funding_rate: 0.0
+  slippage: 0.0
+  decision_threshold: 0.0
+  close_epsilon: 0.0
+  use_rf: true
+  parallel: true
+  max_workers: 0      # 0 -> auto
+
+paths:
+  distribution_snapshot: data/distribution_snapshot.json
+  integral_cache: data/integral_cache.json
+  predicted_daily_volume: data/predicted_daily_volume.jsonl
+  news_features_daily: data/news_features_daily.jsonl
+  correlation_matrix_daily: data/correlation_matrix_daily.jsonl
+  rf_dataset_dir: data
+  simulation_results: data/simulation_results.csv
+  volume_report: reports/volume_model_report.csv
+  rf_policy_report: reports/rf_policy_report.csv
+  speed_benchmark: reports/speed_benchmark.csv
+  models_promoted: models/promoted
+  models_staging: models/staging
+  models_archive: models/archive
+  volume_models: models/volume

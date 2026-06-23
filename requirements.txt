@@ -1,0 +1,13 @@
+numpy
+pandas
+pyyaml
+pytest
+scikit-learn
+joblib
+pyarrow
+
+# FinBERT news sentiment scoring (src/main_score_news.py). Heavy; only needed to
+# run scoring. There is NO silent fallback: scoring fails loudly if these are
+# missing. Install with: pip install transformers torch
+transformers
+torch

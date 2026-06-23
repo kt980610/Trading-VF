@@ -1,0 +1,34 @@
+[package]
+name = "trading_live"
+version = "0.1.0"
+edition = "2021"
+description = "Live Binance Futures trade execution engine (reads Python-produced artifacts)."
+
+[lib]
+name = "trading_live"
+path = "src/lib.rs"
+
+[[bin]]
+name = "trading_live"
+path = "src/main.rs"
+
+[features]
+# Core logic + tests compile without any network deps. The real Binance HTTP
+# client is gated so `cargo test` stays fast and fully offline.
+default = []
+live-http = ["dep:reqwest", "dep:hmac", "dep:hex", "dep:dotenvy"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+anyhow = "1"
+thiserror = "1"
+# Used for the deterministic halving-season tie-break (parity with Python's
+# SHA-256 keyed selection) and, when the HMAC client is enabled, for signing.
+sha2 = "0.10"
+
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"], optional = true }
+hmac = { version = "0.12", optional = true }
+hex = { version = "0.4", optional = true }
+dotenvy = { version = "0.15", optional = true }

@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+env/
+
+# Rust
+target/
+rust_live/target/
+
+# Secrets / local env
+.env
+*.env
+!.env.example
+!rust_live/.env.example
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+
+# Scratch / generated runtime outputs
+out.json
+data/live_decisions.jsonl
+data/live_performance.jsonl
+data/realized_symbol_returns.jsonl
+data/live_position_state.json
+data/kill_switch_triggered.json
